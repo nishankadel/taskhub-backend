@@ -21,7 +21,7 @@ app.use(morgan("tiny"));
 // Setup cors middlewares
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "https://taskhub-client.netlify.app"],
     methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
