@@ -12,8 +12,9 @@ exports.dashboard = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(3);
     const totalProject = await Project.find({ userId: id });
-
-    res.json({
+    if (projects) {
+    }
+    return res.json({
       success: true,
       projects,
       totalProject: totalProject.length,
