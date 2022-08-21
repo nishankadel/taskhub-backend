@@ -34,3 +34,4 @@ app.use("/api/normal", require("./routers/normalRouter"));
 
 // running server
 app.listen(port, () => console.log(`Backend Server Running at ${port}`));
+// mongodb+srv://nishankadel:nishankadel@th-cluster.theehme.mongodb.net/?retryWrites=true&w=majority

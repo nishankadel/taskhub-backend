@@ -20,6 +20,10 @@ const UserSchema = mongoose.Schema({
   location: {
     type: String,
   },
+  emailVerified: {
+    type: Boolean,
+    default: false,
+  },
   avatar: {
     type: String,
     default:
