@@ -10,12 +10,18 @@ const {
   deleteTask,
   updateTask,
   changeTaskStatus,
+  addCollaborator,
+  deleteCollaborator,
+  listCollaborators,
 } = require("../controllers/projectController");
 const { checkUser } = require("../middlewares/auth");
 
 const router = express.Router();
 
 router.post("/create-project", checkUser, createProject);
+router.post("/add-collaborator", checkUser, addCollaborator);
+router.post("/delete-collaborator", checkUser, deleteCollaborator);
+router.get("/list-collaborators/:id", checkUser, listCollaborators);
 router.get("/all-projects/:id", checkUser, listProject);
 router.get("/single-project/:id", checkUser, singleProject);
 router.post("/delete-project", checkUser, deleteProject);

@@ -1,6 +1,7 @@
 // create express controller
 // Import here
 const Project = require("../models/Project");
+const User = require("../models/User");
 
 // @desc   - Create new project
 // @route  - PUT /api/projects/create-project
@@ -38,7 +39,14 @@ exports.createProject = async (req, res) => {
 exports.listProject = async (req, res) => {
   const { id } = req.params;
   try {
-    const projects = await Project.find({ userId: id }).sort({ createdAt: -1 });
+    const projects = await Project.find({
+      $or: [
+        { userId: id },
+        {
+          collaborator: { $elemMatch: { userId: id } },
+        },
+      ],
+    }).sort({ createdAt: -1 });
     res.json({
       success: true,
       projects,
@@ -259,5 +267,123 @@ exports.changeTaskStatus = async (req, res) => {
   } catch (err) {
     res.json({ success: false, message: "Something went wrong." });
     console.log(err);
+  }
+};
+
+// @desc   - Add Task
+// @route  - post /api/projects/add-task
+// @access - Private
+exports.addCollaborator = async (req, res) => {
+  const { email, id } = req.body;
+  try {
+    const project = await Project.findOne({ _id: id });
+    const user = await User.findOne({ email: email });
+
+    if (!project) {
+      return res.json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "User not found.",
+      });
+    } else {
+      const existingCollaborator = await Project.findOne({
+        _id: id,
+        collaborator: { $elemMatch: { userId: user._id } },
+      });
+      if (existingCollaborator) {
+        return res.json({
+          success: false,
+          message: "User already added as collaborator.",
+        });
+      }
+      await Project.updateOne(
+        { _id: id },
+        {
+          $push: {
+            collaborator: {
+              userId: user._id,
+            },
+          },
+        }
+      );
+
+      return res.json({
+        success: true,
+        message: "Collaborator added successfully..",
+      });
+    }
+  } catch (err) {
+    res.json({ success: false, message: "Something went wrong." });
+    console.log(err);
+  }
+};
+
+// @desc   - Delete Colllaborator
+// @route  - post /api/projects/delete-collaborator
+// @access - Private
+exports.deleteCollaborator = async (req, res) => {
+  const { email, id } = req.body;
+  try {
+    const project = await Project.findOne({ _id: id });
+    const user = await User.findOne({ email: email });
+
+    if (!project) {
+      return res.json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "User not found.",
+      });
+    } else {
+      await Project.updateOne(
+        { _id: id },
+        {
+          $pull: {
+            collaborator: {
+              userId: user._id,
+            },
+          },
+        }
+      );
+
+      return res.json({
+        success: true,
+        message: "Collaborator deleted successfully..",
+      });
+    }
+  } catch (err) {
+    res.json({ success: false, message: "Something went wrong." });
+    console.log(err);
+  }
+};
+
+// @desc   - List Collaborators
+// @route  - post /api/projects/list-collaborators`
+// @access - Private
+exports.listCollaborators = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const collaborator = await Project.findOne({ _id: id }).populate({
+      path: "collaborator.userId",
+      model: "User",
+      select: "_id fullName email",
+    });
+    if (collaborator) {
+      res.json({ success: true, collaborators: collaborator.collaborator });
+    } else {
+      res.json({ success: false, message: "No collaborator found." });
+    }
+  } catch (err) {
+    console.log(err);
+    return res.json({ success: false, message: "Something went wrong." });
   }
 };
