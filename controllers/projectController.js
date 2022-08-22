@@ -1,6 +1,7 @@
 // create express controller
 // Import here
 const Project = require("../models/Project");
+const ProjectLog = require("../models/ProjectLog");
 const User = require("../models/User");
 
 // @desc   - Create new project
@@ -9,24 +10,29 @@ const User = require("../models/User");
 exports.createProject = async (req, res) => {
   const { id, projectTitle, projectDescription } = req.body;
   try {
-    const existingProject = await Project.findOne({ projectTitle });
-    if (existingProject) {
-      return res.json({
-        success: false,
-        message: "Project already exists.",
-      });
-    } else {
-      const project = new Project({
-        userId: id,
-        projectTitle,
-        projectDescription,
-      });
-      await project.save();
-      res.json({
-        success: true,
-        message: "Project created successfully.",
-      });
-    }
+    const project = new Project({
+      userId: id,
+      projectTitle,
+      projectDescription,
+    });
+
+    const user = await User.findOne({ _id: id });
+
+    const createProjectLog = new ProjectLog({
+      projectId: project._id,
+      logs: [
+        {
+          log: `${user.fullName} created a new project ${project.projectTitle}`,
+        },
+      ],
+    });
+
+    await project.save();
+    await createProjectLog.save();
+    res.json({
+      success: true,
+      message: "Project created successfully.",
+    });
   } catch (err) {
     res.json({ success: false, message: "Something went wrong." });
     console.log(err);
@@ -95,6 +101,7 @@ exports.deleteProject = async (req, res) => {
       });
     } else {
       await Project.deleteOne({ _id: id });
+      await ProjectLog.deleteOne({ projectId: id });
       return res.json({
         success: true,
         message: "Project deleted successfully.",
@@ -125,6 +132,18 @@ exports.updateProject = async (req, res) => {
           projectTitle,
           projectDescription,
         }
+      );
+      const user = await User.findOne({ _id: project.userId });
+      await ProjectLog.findOneAndUpdate(
+        { projectId: id },
+        {
+          $push: {
+            logs: {
+              log: `${user.fullName} update the project ${project.projectTitle}: project title to ${projectTitle} and project description to ${projectDescription}`,
+            },
+          },
+        },
+        { new: true }
       );
       return res.json({
         success: true,
@@ -160,6 +179,19 @@ exports.addTask = async (req, res) => {
           },
         }
       );
+
+      const user = await User.findOne({ _id: project.userId });
+      await ProjectLog.findOneAndUpdate(
+        { projectId: id },
+        {
+          $push: {
+            logs: {
+              log: `${user.fullName} added a new task ${taskName} to the project ${project.projectTitle}`,
+            },
+          },
+        },
+        { new: true }
+      );
       return res.json({
         success: true,
         message: "Task added successfully.",
@@ -190,6 +222,18 @@ exports.deleteTask = async (req, res) => {
           $pull: {
             projectTask: {
               _id: taskId,
+            },
+          },
+        },
+        { new: true }
+      );
+      const user = await User.findOne({ _id: project.userId });
+      await ProjectLog.findOneAndUpdate(
+        { projectId: id },
+        {
+          $push: {
+            logs: {
+              log: `${user.fullName} delete the task ${taskId} from the project ${project.projectTitle}`,
             },
           },
         },
@@ -227,6 +271,18 @@ exports.updateTask = async (req, res) => {
           },
         }
       );
+      const user = await User.findOne({ _id: project.userId });
+      await ProjectLog.findOneAndUpdate(
+        { projectId: id },
+        {
+          $push: {
+            logs: {
+              log: `${user.fullName} update the task ${taskId} from the project ${project.projectTitle} to ${taskName}`,
+            },
+          },
+        },
+        { new: true }
+      );
       return res.json({
         success: true,
         message: "Task updated successfully.",
@@ -258,6 +314,18 @@ exports.changeTaskStatus = async (req, res) => {
             "projectTask.$.taskStatus": taskStatus,
           },
         }
+      );
+      const user = await User.findOne({ _id: project.userId });
+      await ProjectLog.findOneAndUpdate(
+        { projectId: id },
+        {
+          $push: {
+            logs: {
+              log: `${user.fullName} update the project status of the task ${taskId} from the project ${project.projectTitle} to ${taskStatus}`,
+            },
+          },
+        },
+        { new: true }
       );
       return res.json({
         success: true,
@@ -311,7 +379,18 @@ exports.addCollaborator = async (req, res) => {
           },
         }
       );
-
+      const projectUser = await User.findOne({ _id: project.userId });
+      await ProjectLog.findOneAndUpdate(
+        { projectId: id },
+        {
+          $push: {
+            logs: {
+              log: `${projectUser.fullName} added ${email} as a collaborator to the project ${project.projectTitle}`,
+            },
+          },
+        },
+        { new: true }
+      );
       return res.json({
         success: true,
         message: "Collaborator added successfully..",
@@ -354,7 +433,18 @@ exports.deleteCollaborator = async (req, res) => {
           },
         }
       );
-
+      const user = await User.findOne({ _id: project.userId });
+      await ProjectLog.findOneAndUpdate(
+        { projectId: id },
+        {
+          $push: {
+            logs: {
+              log: `${user.fullName} removed ${email} as a collaborator to the project ${project.projectTitle}`,
+            },
+          },
+        },
+        { new: true }
+      );
       return res.json({
         success: true,
         message: "Collaborator deleted successfully..",
@@ -385,5 +475,33 @@ exports.listCollaborators = async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.json({ success: false, message: "Something went wrong." });
+  }
+};
+
+// @desc   - Generate Project Report
+// @route  - post /api/projects/report
+// @access - Private
+exports.getReport = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const projectReport = await ProjectLog.findOne({ projectId: id }).populate({
+      path: "projectId",
+      model: "Project",
+      select: "projectTitle projectDescription",
+    });
+    if (!projectReport) {
+      return res.json({
+        success: false,
+        message: "Project not found.",
+      });
+    } else {
+      return res.json({ success: true, report: projectReport });
+    }
+  } catch (error) {
+    console.log(error);
+    res.json({
+      success: false,
+      message: "Something went wrong.",
+    });
   }
 };
