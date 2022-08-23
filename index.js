@@ -31,6 +31,7 @@ app.use("/api/auth", require("./routers/authRouter"));
 app.use("/api/profile", require("./routers/profileRouter"));
 app.use("/api/projects", require("./routers/projectRouter"));
 app.use("/api/normal", require("./routers/normalRouter"));
+app.use("/api/todos", require("./routers/todoRouter"));
 
 // running server
 app.listen(port, () => console.log(`Backend Server Running at ${port}`));
