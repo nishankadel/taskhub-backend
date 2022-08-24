@@ -14,6 +14,7 @@ const {
   deleteCollaborator,
   listCollaborators,
   getReport,
+  searchProject,
 } = require("../controllers/projectController");
 const { checkUser } = require("../middlewares/auth");
 
@@ -32,5 +33,6 @@ router.post("/delete-task", checkUser, deleteTask);
 router.post("/update-task", checkUser, updateTask);
 router.post("/change-task-status", checkUser, changeTaskStatus);
 router.get("/report/:id", checkUser, getReport);
+router.post("/search", checkUser, searchProject);
 
 module.exports = router;

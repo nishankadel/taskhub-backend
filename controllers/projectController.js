@@ -505,3 +505,29 @@ exports.getReport = async (req, res) => {
     });
   }
 };
+
+// @desc   - Search Projects
+// @route  - post /api/projects/search
+// @access - Private
+exports.searchProject = async (req, res) => {
+  const { userId, searchText } = req.body;
+  try {
+    const projects = await Project.find({
+      $or: [
+        { userId: userId },
+        {
+          collaborator: { $elemMatch: { userId: userId } },
+        },
+      ],
+      projectTitle: { $regex: searchText, $options: "i" },
+    });
+
+    res.json({ success: true, projects });
+  } catch (error) {
+    console.log(error);
+    res.json({
+      success: false,
+      message: "Something went wrong.",
+    });
+  }
+};
